@@ -12,7 +12,7 @@ const TOKENS: TokenConfig[] = [
   {
     address: 'BWJ7zJauzatao4FsBnGdVsqdBi3k5NbgSY62noZApump',
     name: 'Test Token',
-    launchTimestamp: Date.now() - (200 * 60 * 1000), // ~3h20min ago
+    launchTimestamp: 1772982197000, // Fixed timestamp: 2026-03-08T16:16:37Z
     chain: 'solana'
   }
 ];
