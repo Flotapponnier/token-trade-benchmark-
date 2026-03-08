@@ -1,6 +1,5 @@
 import * as dotenv from 'dotenv';
 import { MobulaProvider } from './providers/mobula';
-import { FlipsideProvider } from './providers/flipside';
 import { DuneProvider } from './providers/dune';
 import { TokenConfig, BenchmarkResult } from './types';
 import * as fs from 'fs';
@@ -27,7 +26,6 @@ async function runBenchmark(token: TokenConfig): Promise<BenchmarkResult> {
 
   // Initialize providers
   const mobula = new MobulaProvider(process.env.MOBULA_API_KEY!);
-  const flipside = new FlipsideProvider(process.env.FLIPSIDE_API_KEY!);
   const dune = new DuneProvider(process.env.DUNE_API_KEY!);
 
   // Fetch data from all providers
@@ -35,27 +33,19 @@ async function runBenchmark(token: TokenConfig): Promise<BenchmarkResult> {
   const mobulaResult = await mobula.fetchTrades(token, startTimestamp, endTimestamp);
   console.log(`✓ Mobula: ${mobulaResult.totalTrades} trades in ${mobulaResult.queryTime}ms`);
 
-  console.log('\nFetching from Flipside...');
-  const flipsideResult = await flipside.fetchTrades(token, startTimestamp, endTimestamp);
-  console.log(`✓ Flipside: ${flipsideResult.totalTrades} trades in ${flipsideResult.queryTime}ms`);
-
   console.log('\nFetching from Dune...');
   const duneResult = await dune.fetchTrades(token, startTimestamp, endTimestamp);
   console.log(`✓ Dune: ${duneResult.totalTrades} trades in ${duneResult.queryTime}ms`);
 
   // Calculate deltas
   const mobulaWallets = new Set(mobulaResult.trades.map(t => t.wallet));
-  const flipsideWallets = new Set(flipsideResult.trades.map(t => t.wallet));
   const duneWallets = new Set(duneResult.trades.map(t => t.wallet));
 
-  const missingWalletsFlipside = [...mobulaWallets].filter(w => !flipsideWallets.has(w));
   const missingWalletsDune = [...mobulaWallets].filter(w => !duneWallets.has(w));
 
   const mobulaDexs = new Set(mobulaResult.dexList);
-  const flipsideDexs = new Set(flipsideResult.dexList);
   const duneDexs = new Set(duneResult.dexList);
 
-  const missingDEXsFlipside = [...mobulaDexs].filter(d => !flipsideDexs.has(d));
   const missingDEXsDune = [...mobulaDexs].filter(d => !duneDexs.has(d));
 
   const result: BenchmarkResult = {
@@ -67,24 +57,19 @@ async function runBenchmark(token: TokenConfig): Promise<BenchmarkResult> {
     },
     results: {
       mobula: mobulaResult,
-      flipside: flipsideResult,
       dune: duneResult
     },
     comparison: {
       tradeDelta: {
-        mobulaVsFlipside: mobulaResult.totalTrades - flipsideResult.totalTrades,
         mobulaVsDune: mobulaResult.totalTrades - duneResult.totalTrades
       },
       walletDelta: {
-        mobulaVsFlipside: missingWalletsFlipside.length,
         mobulaVsDune: missingWalletsDune.length
       },
       missingDEXs: {
-        flipside: missingDEXsFlipside,
         dune: missingDEXsDune
       },
       missingWallets: {
-        flipside: missingWalletsFlipside,
         dune: missingWalletsDune
       }
     }
@@ -107,27 +92,21 @@ function printReport(result: BenchmarkResult) {
   console.log(`│ Provider  │ Total Trades │ Unique Wallets │ Query Time │`);
   console.log(`├${'─'.repeat(58)}┤`);
   console.log(`│ Mobula    │ ${String(result.results.mobula.totalTrades).padEnd(12)} │ ${String(result.results.mobula.uniqueWallets).padEnd(14)} │ ${String(result.results.mobula.queryTime + 'ms').padEnd(10)} │`);
-  console.log(`│ Flipside  │ ${String(result.results.flipside.totalTrades).padEnd(12)} │ ${String(result.results.flipside.uniqueWallets).padEnd(14)} │ ${String(result.results.flipside.queryTime + 'ms').padEnd(10)} │`);
   console.log(`│ Dune      │ ${String(result.results.dune.totalTrades).padEnd(12)} │ ${String(result.results.dune.uniqueWallets).padEnd(14)} │ ${String(result.results.dune.queryTime + 'ms').padEnd(10)} │`);
   console.log(`└${'─'.repeat(58)}┘\n`);
 
   console.log('DELTA ANALYSIS:');
-  console.log(`Mobula vs Flipside:`);
-  console.log(`  - Trade delta: +${result.comparison.tradeDelta.mobulaVsFlipside} trades (${((result.comparison.tradeDelta.mobulaVsFlipside / result.results.flipside.totalTrades) * 100).toFixed(1)}% more)`);
-  console.log(`  - Wallet delta: +${result.comparison.walletDelta.mobulaVsFlipside} unique wallets\n`);
-
   console.log(`Mobula vs Dune:`);
-  console.log(`  - Trade delta: +${result.comparison.tradeDelta.mobulaVsDune} trades (${((result.comparison.tradeDelta.mobulaVsDune / result.results.dune.totalTrades) * 100).toFixed(1)}% more)`);
+  const percentage = result.results.dune.totalTrades > 0
+    ? ((result.comparison.tradeDelta.mobulaVsDune / result.results.dune.totalTrades) * 100).toFixed(1)
+    : '0.0';
+  console.log(`  - Trade delta: +${result.comparison.tradeDelta.mobulaVsDune} trades (${percentage}% more)`);
   console.log(`  - Wallet delta: +${result.comparison.walletDelta.mobulaVsDune} unique wallets\n`);
 
   console.log('DEX COVERAGE:');
   console.log(`Mobula DEXs (${result.results.mobula.dexList.length}): ${result.results.mobula.dexList.join(', ')}`);
-  console.log(`Flipside DEXs (${result.results.flipside.dexList.length}): ${result.results.flipside.dexList.join(', ')}`);
   console.log(`Dune DEXs (${result.results.dune.dexList.length}): ${result.results.dune.dexList.join(', ')}\n`);
 
-  if (result.comparison.missingDEXs.flipside.length > 0) {
-    console.log(`Missing from Flipside: ${result.comparison.missingDEXs.flipside.join(', ')}`);
-  }
   if (result.comparison.missingDEXs.dune.length > 0) {
     console.log(`Missing from Dune: ${result.comparison.missingDEXs.dune.join(', ')}`);
   }

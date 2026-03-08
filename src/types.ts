@@ -36,24 +36,19 @@ export interface BenchmarkResult {
   };
   results: {
     mobula: ProviderResult;
-    flipside: ProviderResult;
     dune: ProviderResult;
   };
   comparison: {
     tradeDelta: {
-      mobulaVsFlipside: number;
       mobulaVsDune: number;
     };
     walletDelta: {
-      mobulaVsFlipside: number;
       mobulaVsDune: number;
     };
     missingDEXs: {
-      flipside: string[];
       dune: string[];
     };
     missingWallets: {
-      flipside: string[];
       dune: string[];
     };
   };

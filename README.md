@@ -1,6 +1,6 @@
 # Token Trade Benchmark
 
-Benchmark tool for comparing token trade data coverage across Mobula, Flipside, and Dune Analytics.
+Benchmark tool for comparing token trade data coverage between Mobula and Dune Analytics.
 
 ## Purpose
 
@@ -29,7 +29,6 @@ cp .env.example .env
 3. Add your API keys to `.env`:
 ```
 MOBULA_API_KEY=your_mobula_api_key
-FLIPSIDE_API_KEY=your_flipside_api_key
 DUNE_API_KEY=your_dune_api_key
 ```
 
@@ -81,25 +80,18 @@ TRADE COUNT COMPARISON:
 │ Provider  │ Total Trades │ Unique Wallets │ Query Time │
 ├──────────────────────────────────────────────────────────┤
 │ Mobula    │ 1247         │ 583            │ 2340ms     │
-│ Flipside  │ 1021         │ 478            │ 45200ms    │
 │ Dune      │ 1089         │ 502            │ 38100ms    │
 └──────────────────────────────────────────────────────────┘
 
 DELTA ANALYSIS:
-Mobula vs Flipside:
-  - Trade delta: +226 trades (22.1% more)
-  - Wallet delta: +105 unique wallets
-
 Mobula vs Dune:
   - Trade delta: +158 trades (14.5% more)
   - Wallet delta: +81 unique wallets
 
 DEX COVERAGE:
 Mobula DEXs (8): Raydium, Orca, Phoenix, Lifinity, Jupiter, Meteora, Aldrin, Saber
-Flipside DEXs (5): Raydium, Orca, Jupiter, Meteora, Saber
 Dune DEXs (6): Raydium, Orca, Phoenix, Jupiter, Meteora, Saber
 
-Missing from Flipside: Phoenix, Lifinity, Aldrin
 Missing from Dune: Lifinity, Aldrin
 ```
 
@@ -117,7 +109,6 @@ src/
 ├── types.ts              # TypeScript interfaces
 ├── providers/
 │   ├── mobula.ts        # Mobula API client
-│   ├── flipside.ts      # Flipside API client
 │   └── dune.ts          # Dune Analytics API client
 └── benchmark.ts         # Main benchmark script
 ```
