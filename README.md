@@ -1,10 +1,10 @@
-# Token Trade Benchmark
+# Token Trade Coverage Analysis
 
-Benchmark tool for comparing token trade data coverage between Mobula and Dune Analytics.
+Tool for analyzing token trade data coverage using Mobula API.
 
 ## Purpose
 
-This tool proves a single thing: **for the same token on the same time window, Mobula returns more trades than other providers** — and identifies where the delta comes from (DEX coverage).
+This tool analyzes trade coverage for newly launched tokens, focusing on the critical first hour after launch. It measures total trades, unique wallets (early buyers), DEX coverage, and MEV activity.
 
 ## What it measures
 
@@ -26,10 +26,9 @@ npm install
 cp .env.example .env
 ```
 
-3. Add your API keys to `.env`:
+3. Add your API key to `.env`:
 ```
 MOBULA_API_KEY=your_mobula_api_key
-DUNE_API_KEY=your_dune_api_key
 ```
 
 ## Configuration
@@ -68,39 +67,49 @@ The tool will:
 ### Example output:
 
 ```
-BENCHMARK RESULTS
-==============================================================
+MOBULA DATA COVERAGE REPORT
+============================================================
 
-Token: Example Token
-Time Window: 2024-02-01T00:00:00.000Z -> 2024-02-01T01:00:00.000Z
-Duration: 60 minutes
+Token: Test Token
+Address: BWJ7zJauzatao4FsBnGdVsqdBi3k5NbgSY62noZApump
+Time Window: 2026-03-08T14:47:00.000Z -> 2026-03-08T15:47:00.000Z
+Duration: 60 minutes (first hour after launch)
 
-TRADE COUNT COMPARISON:
+TRADE STATISTICS:
 ┌──────────────────────────────────────────────────────────┐
-│ Provider  │ Total Trades │ Unique Wallets │ Query Time │
+│ Metric             │ Value                                │
 ├──────────────────────────────────────────────────────────┤
-│ Mobula    │ 1247         │ 583            │ 2340ms     │
-│ Dune      │ 1089         │ 502            │ 38100ms    │
+│ Total Trades       │ 13922                                │
+│ Unique Wallets     │ 2892                                 │
+│ Buy Trades         │ 8456                                 │
+│ Sell Trades        │ 5466                                 │
+│ MEV Trades         │ 234                                  │
+│ Query Time         │ 6561ms                               │
+│ DEX Count          │ 13                                   │
 └──────────────────────────────────────────────────────────┘
 
-DELTA ANALYSIS:
-Mobula vs Dune:
-  - Trade delta: +158 trades (14.5% more)
-  - Wallet delta: +81 unique wallets
-
-DEX COVERAGE:
-Mobula DEXs (8): Raydium, Orca, Phoenix, Lifinity, Jupiter, Meteora, Aldrin, Saber
-Dune DEXs (6): Raydium, Orca, Phoenix, Jupiter, Meteora, Saber
-
-Missing from Dune: Lifinity, Aldrin
+DEX COVERAGE (13 platforms):
+  1. Phantom
+  2. Trojan
+  3. Fomo
+  4. Axiom
+  5. Padre
+  6. GMGN
+  7. UniversalX
+  8. Photon
+  9. Lute
+  10. BullX
+  11. Bloom
+  12. Maestro
+  13. unknown
 ```
 
-## What this proves
+## What this shows
 
-- **The Missing Trade Problem**: Trades that Mobula captures but competitors miss
-- **DEX Coverage Gap**: Specific DEXs where data is incomplete on other providers
-- **Early Buyer Detection**: Wallets that would never be labeled by systems using incomplete data
-- **Query Performance**: Real-time vs batch processing latency
+- **Complete DEX Coverage**: Number of different trading platforms captured in the first hour
+- **Early Buyer Detection**: Unique wallets that participated in the launch
+- **MEV Activity**: Proportion of trades involving MEV
+- **Query Performance**: Real-time data retrieval speed
 
 ## Project Structure
 
@@ -108,9 +117,8 @@ Missing from Dune: Lifinity, Aldrin
 src/
 ├── types.ts              # TypeScript interfaces
 ├── providers/
-│   ├── mobula.ts        # Mobula API client
-│   └── dune.ts          # Dune Analytics API client
-└── benchmark.ts         # Main benchmark script
+│   └── mobula.ts        # Mobula API client
+└── benchmark.ts         # Main analysis script
 ```
 
 ## License

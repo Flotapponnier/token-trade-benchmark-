@@ -27,29 +27,3 @@ export interface ProviderResult {
   errors?: string[];
 }
 
-export interface BenchmarkResult {
-  token: TokenConfig;
-  timeWindow: {
-    start: number;
-    end: number;
-    durationMinutes: number;
-  };
-  results: {
-    mobula: ProviderResult;
-    dune: ProviderResult;
-  };
-  comparison: {
-    tradeDelta: {
-      mobulaVsDune: number;
-    };
-    walletDelta: {
-      mobulaVsDune: number;
-    };
-    missingDEXs: {
-      dune: string[];
-    };
-    missingWallets: {
-      dune: string[];
-    };
-  };
-}

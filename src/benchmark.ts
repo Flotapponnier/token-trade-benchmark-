@@ -1,52 +1,58 @@
 import * as dotenv from 'dotenv';
 import { MobulaProvider } from './providers/mobula';
-import { DuneProvider } from './providers/dune';
-import { TokenConfig, BenchmarkResult } from './types';
+import { TokenConfig } from './types';
 import * as fs from 'fs';
 
 dotenv.config();
 
 const TOKENS: TokenConfig[] = [
   {
-    address: 'YOUR_TOKEN_ADDRESS_HERE',
-    name: 'Example Token',
-    launchTimestamp: 1706745600000, // Replace with actual launch timestamp
+    address: 'BWJ7zJauzatao4FsBnGdVsqdBi3k5NbgSY62noZApump',
+    name: 'Test Token',
+    launchTimestamp: Date.now() - (200 * 60 * 1000), // ~3h20min ago
     chain: 'solana'
   }
-  // Add more tokens here
 ];
+
+interface BenchmarkResult {
+  token: TokenConfig;
+  timeWindow: {
+    start: number;
+    end: number;
+    durationMinutes: number;
+  };
+  results: {
+    totalTrades: number;
+    uniqueWallets: number;
+    dexList: string[];
+    queryTime: number;
+    buyTrades: number;
+    sellTrades: number;
+    mevTrades: number;
+  };
+}
 
 async function runBenchmark(token: TokenConfig): Promise<BenchmarkResult> {
   console.log(`\n${'='.repeat(60)}`);
-  console.log(`Benchmarking: ${token.name} (${token.address})`);
+  console.log(`Benchmarking: ${token.name}`);
+  console.log(`Address: ${token.address}`);
   console.log(`${'='.repeat(60)}\n`);
 
   const startTimestamp = token.launchTimestamp;
   const endTimestamp = token.launchTimestamp + 3600000; // +1 hour
 
-  // Initialize providers
+  // Initialize Mobula provider
   const mobula = new MobulaProvider(process.env.MOBULA_API_KEY!);
-  const dune = new DuneProvider(process.env.DUNE_API_KEY!);
 
-  // Fetch data from all providers
-  console.log('Fetching from Mobula...');
+  // Fetch data
+  console.log('Fetching trades from Mobula...');
   const mobulaResult = await mobula.fetchTrades(token, startTimestamp, endTimestamp);
-  console.log(`✓ Mobula: ${mobulaResult.totalTrades} trades in ${mobulaResult.queryTime}ms`);
+  console.log(`✓ Fetched ${mobulaResult.totalTrades} trades in ${mobulaResult.queryTime}ms`);
 
-  console.log('\nFetching from Dune...');
-  const duneResult = await dune.fetchTrades(token, startTimestamp, endTimestamp);
-  console.log(`✓ Dune: ${duneResult.totalTrades} trades in ${duneResult.queryTime}ms`);
-
-  // Calculate deltas
-  const mobulaWallets = new Set(mobulaResult.trades.map(t => t.wallet));
-  const duneWallets = new Set(duneResult.trades.map(t => t.wallet));
-
-  const missingWalletsDune = [...mobulaWallets].filter(w => !duneWallets.has(w));
-
-  const mobulaDexs = new Set(mobulaResult.dexList);
-  const duneDexs = new Set(duneResult.dexList);
-
-  const missingDEXsDune = [...mobulaDexs].filter(d => !duneDexs.has(d));
+  // Calculate stats
+  const buyTrades = mobulaResult.trades.filter(t => t.type === 'buy').length;
+  const sellTrades = mobulaResult.trades.filter(t => t.type === 'sell').length;
+  const mevTrades = mobulaResult.trades.filter(t => t.isMEV).length;
 
   const result: BenchmarkResult = {
     token,
@@ -56,22 +62,13 @@ async function runBenchmark(token: TokenConfig): Promise<BenchmarkResult> {
       durationMinutes: 60
     },
     results: {
-      mobula: mobulaResult,
-      dune: duneResult
-    },
-    comparison: {
-      tradeDelta: {
-        mobulaVsDune: mobulaResult.totalTrades - duneResult.totalTrades
-      },
-      walletDelta: {
-        mobulaVsDune: missingWalletsDune.length
-      },
-      missingDEXs: {
-        dune: missingDEXsDune
-      },
-      missingWallets: {
-        dune: missingWalletsDune
-      }
+      totalTrades: mobulaResult.totalTrades,
+      uniqueWallets: mobulaResult.uniqueWallets,
+      dexList: mobulaResult.dexList,
+      queryTime: mobulaResult.queryTime,
+      buyTrades,
+      sellTrades,
+      mevTrades
     }
   };
 
@@ -80,36 +77,31 @@ async function runBenchmark(token: TokenConfig): Promise<BenchmarkResult> {
 
 function printReport(result: BenchmarkResult) {
   console.log(`\n${'='.repeat(60)}`);
-  console.log('BENCHMARK RESULTS');
+  console.log('MOBULA DATA COVERAGE REPORT');
   console.log(`${'='.repeat(60)}\n`);
 
   console.log(`Token: ${result.token.name}`);
+  console.log(`Address: ${result.token.address}`);
   console.log(`Time Window: ${new Date(result.timeWindow.start).toISOString()} -> ${new Date(result.timeWindow.end).toISOString()}`);
-  console.log(`Duration: ${result.timeWindow.durationMinutes} minutes\n`);
+  console.log(`Duration: ${result.timeWindow.durationMinutes} minutes (first hour after launch)\n`);
 
-  console.log('TRADE COUNT COMPARISON:');
+  console.log('TRADE STATISTICS:');
   console.log(`┌${'─'.repeat(58)}┐`);
-  console.log(`│ Provider  │ Total Trades │ Unique Wallets │ Query Time │`);
+  console.log(`│ Metric             │ Value                                │`);
   console.log(`├${'─'.repeat(58)}┤`);
-  console.log(`│ Mobula    │ ${String(result.results.mobula.totalTrades).padEnd(12)} │ ${String(result.results.mobula.uniqueWallets).padEnd(14)} │ ${String(result.results.mobula.queryTime + 'ms').padEnd(10)} │`);
-  console.log(`│ Dune      │ ${String(result.results.dune.totalTrades).padEnd(12)} │ ${String(result.results.dune.uniqueWallets).padEnd(14)} │ ${String(result.results.dune.queryTime + 'ms').padEnd(10)} │`);
+  console.log(`│ Total Trades       │ ${String(result.results.totalTrades).padEnd(36)} │`);
+  console.log(`│ Unique Wallets     │ ${String(result.results.uniqueWallets).padEnd(36)} │`);
+  console.log(`│ Buy Trades         │ ${String(result.results.buyTrades).padEnd(36)} │`);
+  console.log(`│ Sell Trades        │ ${String(result.results.sellTrades).padEnd(36)} │`);
+  console.log(`│ MEV Trades         │ ${String(result.results.mevTrades).padEnd(36)} │`);
+  console.log(`│ Query Time         │ ${String(result.results.queryTime + 'ms').padEnd(36)} │`);
+  console.log(`│ DEX Count          │ ${String(result.results.dexList.length).padEnd(36)} │`);
   console.log(`└${'─'.repeat(58)}┘\n`);
 
-  console.log('DELTA ANALYSIS:');
-  console.log(`Mobula vs Dune:`);
-  const percentage = result.results.dune.totalTrades > 0
-    ? ((result.comparison.tradeDelta.mobulaVsDune / result.results.dune.totalTrades) * 100).toFixed(1)
-    : '0.0';
-  console.log(`  - Trade delta: +${result.comparison.tradeDelta.mobulaVsDune} trades (${percentage}% more)`);
-  console.log(`  - Wallet delta: +${result.comparison.walletDelta.mobulaVsDune} unique wallets\n`);
-
-  console.log('DEX COVERAGE:');
-  console.log(`Mobula DEXs (${result.results.mobula.dexList.length}): ${result.results.mobula.dexList.join(', ')}`);
-  console.log(`Dune DEXs (${result.results.dune.dexList.length}): ${result.results.dune.dexList.join(', ')}\n`);
-
-  if (result.comparison.missingDEXs.dune.length > 0) {
-    console.log(`Missing from Dune: ${result.comparison.missingDEXs.dune.join(', ')}`);
-  }
+  console.log(`DEX COVERAGE (${result.results.dexList.length} platforms):`);
+  result.results.dexList.forEach((dex, i) => {
+    console.log(`  ${i + 1}. ${dex}`);
+  });
 
   console.log(`\n${'='.repeat(60)}\n`);
 }
