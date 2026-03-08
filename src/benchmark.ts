@@ -1,6 +1,8 @@
 import * as dotenv from 'dotenv';
 import { MobulaProvider } from './providers/mobula';
-import { TokenConfig } from './types';
+import { MoralisProvider } from './providers/moralis';
+import { BitqueryProvider } from './providers/bitquery';
+import { TokenConfig, ProviderResult } from './types';
 import * as fs from 'fs';
 
 dotenv.config();
@@ -22,13 +24,9 @@ interface BenchmarkResult {
     durationMinutes: number;
   };
   results: {
-    totalTrades: number;
-    uniqueWallets: number;
-    dexList: string[];
-    queryTime: number;
-    buyTrades: number;
-    sellTrades: number;
-    mevTrades: number;
+    mobula: ProviderResult;
+    moralis: ProviderResult;
+    bitquery: ProviderResult;
   };
 }
 
@@ -41,18 +39,23 @@ async function runBenchmark(token: TokenConfig): Promise<BenchmarkResult> {
   const startTimestamp = token.launchTimestamp;
   const endTimestamp = token.launchTimestamp + 3600000; // +1 hour
 
-  // Initialize Mobula provider
+  // Initialize providers
   const mobula = new MobulaProvider(process.env.MOBULA_API_KEY!);
+  const moralis = new MoralisProvider(process.env.MORALIS_API_KEY!);
+  const bitquery = new BitqueryProvider(process.env.BITQUERY_API_KEY!);
 
-  // Fetch data
+  // Fetch data from all providers
   console.log('Fetching trades from Mobula...');
   const mobulaResult = await mobula.fetchTrades(token, startTimestamp, endTimestamp);
-  console.log(`✓ Fetched ${mobulaResult.totalTrades} trades in ${mobulaResult.queryTime}ms`);
+  console.log(`✓ Mobula: ${mobulaResult.totalTrades} trades in ${mobulaResult.queryTime}ms`);
 
-  // Calculate stats
-  const buyTrades = mobulaResult.trades.filter(t => t.type === 'buy').length;
-  const sellTrades = mobulaResult.trades.filter(t => t.type === 'sell').length;
-  const mevTrades = mobulaResult.trades.filter(t => t.isMEV).length;
+  console.log('\nFetching trades from Moralis...');
+  const moralisResult = await moralis.fetchTrades(token, startTimestamp, endTimestamp);
+  console.log(`✓ Moralis: ${moralisResult.totalTrades} trades in ${moralisResult.queryTime}ms`);
+
+  console.log('\nFetching trades from Bitquery...');
+  const bitqueryResult = await bitquery.fetchTrades(token, startTimestamp, endTimestamp);
+  console.log(`✓ Bitquery: ${bitqueryResult.totalTrades} trades in ${bitqueryResult.queryTime}ms`);
 
   const result: BenchmarkResult = {
     token,
@@ -62,13 +65,9 @@ async function runBenchmark(token: TokenConfig): Promise<BenchmarkResult> {
       durationMinutes: 60
     },
     results: {
-      totalTrades: mobulaResult.totalTrades,
-      uniqueWallets: mobulaResult.uniqueWallets,
-      dexList: mobulaResult.dexList,
-      queryTime: mobulaResult.queryTime,
-      buyTrades,
-      sellTrades,
-      mevTrades
+      mobula: mobulaResult,
+      moralis: moralisResult,
+      bitquery: bitqueryResult
     }
   };
 
@@ -76,34 +75,44 @@ async function runBenchmark(token: TokenConfig): Promise<BenchmarkResult> {
 }
 
 function printReport(result: BenchmarkResult) {
-  console.log(`\n${'='.repeat(60)}`);
-  console.log('MOBULA DATA COVERAGE REPORT');
-  console.log(`${'='.repeat(60)}\n`);
+  console.log(`\n${'='.repeat(70)}`);
+  console.log('BENCHMARK RESULTS: MOBULA VS MORALIS VS BITQUERY');
+  console.log(`${'='.repeat(70)}\n`);
 
   console.log(`Token: ${result.token.name}`);
   console.log(`Address: ${result.token.address}`);
   console.log(`Time Window: ${new Date(result.timeWindow.start).toISOString()} -> ${new Date(result.timeWindow.end).toISOString()}`);
   console.log(`Duration: ${result.timeWindow.durationMinutes} minutes (first hour after launch)\n`);
 
-  console.log('TRADE STATISTICS:');
-  console.log(`┌${'─'.repeat(58)}┐`);
-  console.log(`│ Metric             │ Value                                │`);
-  console.log(`├${'─'.repeat(58)}┤`);
-  console.log(`│ Total Trades       │ ${String(result.results.totalTrades).padEnd(36)} │`);
-  console.log(`│ Unique Wallets     │ ${String(result.results.uniqueWallets).padEnd(36)} │`);
-  console.log(`│ Buy Trades         │ ${String(result.results.buyTrades).padEnd(36)} │`);
-  console.log(`│ Sell Trades        │ ${String(result.results.sellTrades).padEnd(36)} │`);
-  console.log(`│ MEV Trades         │ ${String(result.results.mevTrades).padEnd(36)} │`);
-  console.log(`│ Query Time         │ ${String(result.results.queryTime + 'ms').padEnd(36)} │`);
-  console.log(`│ DEX Count          │ ${String(result.results.dexList.length).padEnd(36)} │`);
-  console.log(`└${'─'.repeat(58)}┘\n`);
+  console.log('COMPARISON TABLE:');
+  console.log(`┌${'─'.repeat(68)}┐`);
+  console.log(`│ Provider  │ Total Trades │ Unique Wallets │ DEXs │ Query Time │`);
+  console.log(`├${'─'.repeat(68)}┤`);
+  console.log(`│ Mobula    │ ${String(result.results.mobula.totalTrades).padEnd(12)} │ ${String(result.results.mobula.uniqueWallets).padEnd(14)} │ ${String(result.results.mobula.dexList.length).padEnd(4)} │ ${String(result.results.mobula.queryTime + 'ms').padEnd(10)} │`);
+  console.log(`│ Moralis   │ ${String(result.results.moralis.totalTrades).padEnd(12)} │ ${String(result.results.moralis.uniqueWallets).padEnd(14)} │ ${String(result.results.moralis.dexList.length).padEnd(4)} │ ${String(result.results.moralis.queryTime + 'ms').padEnd(10)} │`);
+  console.log(`│ Bitquery  │ ${String(result.results.bitquery.totalTrades).padEnd(12)} │ ${String(result.results.bitquery.uniqueWallets).padEnd(14)} │ ${String(result.results.bitquery.dexList.length).padEnd(4)} │ ${String(result.results.bitquery.queryTime + 'ms').padEnd(10)} │`);
+  console.log(`└${'─'.repeat(68)}┘\n`);
 
-  console.log(`DEX COVERAGE (${result.results.dexList.length} platforms):`);
-  result.results.dexList.forEach((dex, i) => {
-    console.log(`  ${i + 1}. ${dex}`);
-  });
+  console.log('DELTA ANALYSIS (vs Mobula):');
 
-  console.log(`\n${'='.repeat(60)}\n`);
+  const moralisDelta = result.results.mobula.totalTrades - result.results.moralis.totalTrades;
+  const moralisPercentage = result.results.mobula.totalTrades > 0
+    ? ((moralisDelta / result.results.mobula.totalTrades) * 100).toFixed(1)
+    : '0.0';
+  console.log(`  Moralis missing: ${moralisDelta} trades (${moralisPercentage}% of total)`);
+
+  const bitqueryDelta = result.results.mobula.totalTrades - result.results.bitquery.totalTrades;
+  const bitqueryPercentage = result.results.mobula.totalTrades > 0
+    ? ((bitqueryDelta / result.results.mobula.totalTrades) * 100).toFixed(1)
+    : '0.0';
+  console.log(`  Bitquery missing: ${bitqueryDelta} trades (${bitqueryPercentage}% of total)\n`);
+
+  console.log('DEX COVERAGE:');
+  console.log(`  Mobula: ${result.results.mobula.dexList.join(', ')}`);
+  console.log(`  Moralis: ${result.results.moralis.dexList.length > 0 ? result.results.moralis.dexList.join(', ') : 'none'}`);
+  console.log(`  Bitquery: ${result.results.bitquery.dexList.length > 0 ? result.results.bitquery.dexList.join(', ') : 'none'}`);
+
+  console.log(`\n${'='.repeat(70)}\n`);
 }
 
 async function main() {

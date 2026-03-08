@@ -18,7 +18,7 @@ export interface Trade {
 }
 
 export interface ProviderResult {
-  provider: 'mobula' | 'flipside' | 'dune';
+  provider: 'mobula' | 'moralis' | 'bitquery';
   totalTrades: number;
   uniqueWallets: number;
   dexList: string[];
