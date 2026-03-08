@@ -46,15 +46,22 @@ export class MobulaProvider {
 
         if (data.data && Array.isArray(data.data)) {
           trades.push(...data.data.map((t: any) => ({
-            hash: t.hash || t.transactionHash,
-            wallet: t.swapSenderAddress || t.wallet,
+            hash: t.transactionHash,
+            wallet: t.swapSenderAddress,
             type: t.type,
-            timestamp: t.timestamp || t.blockTimestamp,
-            dex: t.platform?.name || 'unknown',
-            amount: t.amountUSD,
+            timestamp: t.date,
+            platform: t.platform?.name || 'unknown',
+            dex: 'unknown', // TODO: derive from marketAddress or add DEX detection
+            marketAddress: t.marketAddress,
+            amount: t.baseTokenAmount,
+            amountUSD: t.baseTokenAmountUSD,
             price: t.baseTokenPriceUSD,
             isMEV: t.operation === 'mev',
-            labels: t.labels || []
+            labels: t.labels || [],
+            totalFeesUSD: t.totalFeesUSD,
+            gasFeesUSD: t.gasFeesUSD,
+            platformFeesUSD: t.platformFeesUSD,
+            mevFeesUSD: t.mevFeesUSD
           })));
         }
 
@@ -67,13 +74,15 @@ export class MobulaProvider {
     }
 
     const uniqueWallets = new Set(trades.map(t => t.wallet)).size;
-    const dexList = [...new Set(trades.map(t => t.dex))];
+    const platformList = [...new Set(trades.map(t => t.platform).filter(Boolean))];
+    const dexList = [...new Set(trades.map(t => t.dex).filter(Boolean))];
 
     return {
       provider: 'mobula',
       totalTrades: trades.length,
       uniqueWallets,
       dexList,
+      platformList, // Add platform list separately
       trades,
       queryTime: Date.now() - startTime,
       errors: errors.length > 0 ? errors : undefined
