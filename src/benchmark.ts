@@ -24,8 +24,8 @@ const TOKENS: TokenConfig[] = [
   },
   // Ethereum
   {
-    address: '0x0000000000000000000000000000000000000000',
-    name: 'ETH',
+    address: '0x279B46A5BCB1D1de37F5588e46c756B15b26A896',
+    name: 'OIL',
     launchTimestamp: Date.now() - 600000,
     chain: 'ethereum'
   },
