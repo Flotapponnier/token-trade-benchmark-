@@ -9,11 +9,57 @@ import * as fs from 'fs';
 dotenv.config();
 
 const TOKENS: TokenConfig[] = [
+  // Solana
   {
     address: 'BWJ7zJauzatao4FsBnGdVsqdBi3k5NbgSY62noZApump',
-    name: 'Test Token',
-    launchTimestamp: 1772982197000, // Fixed timestamp: 2026-03-08T16:16:37Z
+    name: 'Nana',
+    launchTimestamp: Date.now() - 600000, // 10 minutes ago
     chain: 'solana'
+  },
+  {
+    address: 'GJqCjtgEwqdFWVRsDs8JXKFoTeRVZeHs1RL4ccvrpump',
+    name: 'Oilinu',
+    launchTimestamp: Date.now() - 600000,
+    chain: 'solana'
+  },
+  // Ethereum
+  {
+    address: '0x0000000000000000000000000000000000000000',
+    name: 'ETH',
+    launchTimestamp: Date.now() - 600000,
+    chain: 'ethereum'
+  },
+  {
+    address: '0x2b566950BA2298AcEf3c730CC0129b2f4fBd30a3',
+    name: 'Kimchi',
+    launchTimestamp: Date.now() - 600000,
+    chain: 'ethereum'
+  },
+  // BSC
+  {
+    address: '0xc20E45E49e0E79f0fC81E71F05fD2772d6587777',
+    name: 'MILADY',
+    launchTimestamp: Date.now() - 600000,
+    chain: 'bsc'
+  },
+  {
+    address: '0xCae117ca6Bc8A341D2E7207F30E180f0e5618B9D',
+    name: 'ARK',
+    launchTimestamp: Date.now() - 600000,
+    chain: 'bsc'
+  },
+  // Base
+  {
+    address: '0x64384EBd580f8c48ED4972bbbE895aDE55671Aca',
+    name: 'Broke',
+    launchTimestamp: Date.now() - 600000,
+    chain: 'base'
+  },
+  {
+    address: '0x9aA448c1Da3B8975e0619A5a96db4Fccc491e4d5',
+    name: 'LANCER',
+    launchTimestamp: Date.now() - 600000,
+    chain: 'base'
   }
 ];
 
@@ -39,7 +85,7 @@ async function runBenchmark(token: TokenConfig): Promise<BenchmarkResult> {
   console.log(`${'='.repeat(60)}\n`);
 
   const startTimestamp = token.launchTimestamp;
-  const endTimestamp = token.launchTimestamp + 3600000; // +1 hour
+  const endTimestamp = token.launchTimestamp + 600000; // +10 minutes
 
   // Initialize providers
   const mobula = new MobulaProvider(process.env.MOBULA_API_KEY!);
@@ -69,7 +115,7 @@ async function runBenchmark(token: TokenConfig): Promise<BenchmarkResult> {
     timeWindow: {
       start: startTimestamp,
       end: endTimestamp,
-      durationMinutes: 60
+      durationMinutes: 10
     },
     results: {
       mobula: mobulaResult,
@@ -90,37 +136,49 @@ function printReport(result: BenchmarkResult) {
   console.log(`Token: ${result.token.name}`);
   console.log(`Address: ${result.token.address}`);
   console.log(`Time Window: ${new Date(result.timeWindow.start).toISOString()} -> ${new Date(result.timeWindow.end).toISOString()}`);
-  console.log(`Duration: ${result.timeWindow.durationMinutes} minutes (first hour after launch)\n`);
+  console.log(`Duration: ${result.timeWindow.durationMinutes} minutes\n`);
+
+  // Calculate unique transactions
+  const mobulaUniqueTx = new Set(result.results.mobula.trades.map(t => t.hash)).size;
+  const moralisUniqueTx = new Set(result.results.moralis.trades.map(t => t.hash)).size;
+  const bitqueryUniqueTx = new Set(result.results.bitquery.trades.map(t => t.hash)).size;
+  const codexUniqueTx = new Set(result.results.codex.trades.map(t => t.hash)).size;
 
   console.log('COMPARISON TABLE:');
-  console.log(`┌${'─'.repeat(78)}┐`);
-  console.log(`│ Provider  │ Total Trades │ Unique Wallets │ DEXs │ Query Time   │`);
-  console.log(`├${'─'.repeat(78)}┤`);
-  console.log(`│ Mobula    │ ${String(result.results.mobula.totalTrades).padEnd(12)} │ ${String(result.results.mobula.uniqueWallets).padEnd(14)} │ ${String(result.results.mobula.dexList.length).padEnd(4)} │ ${String(result.results.mobula.queryTime + 'ms').padEnd(12)} │`);
-  console.log(`│ Moralis   │ ${String(result.results.moralis.totalTrades).padEnd(12)} │ ${String(result.results.moralis.uniqueWallets).padEnd(14)} │ ${String(result.results.moralis.dexList.length).padEnd(4)} │ ${String(result.results.moralis.queryTime + 'ms').padEnd(12)} │`);
-  console.log(`│ Bitquery  │ ${String(result.results.bitquery.totalTrades).padEnd(12)} │ ${String(result.results.bitquery.uniqueWallets).padEnd(14)} │ ${String(result.results.bitquery.dexList.length).padEnd(4)} │ ${String(result.results.bitquery.queryTime + 'ms').padEnd(12)} │`);
-  console.log(`│ Codex     │ ${String(result.results.codex.totalTrades).padEnd(12)} │ ${String(result.results.codex.uniqueWallets).padEnd(14)} │ ${String(result.results.codex.dexList.length).padEnd(4)} │ ${String(result.results.codex.queryTime + 'ms').padEnd(12)} │`);
-  console.log(`└${'─'.repeat(78)}┘\n`);
+  console.log(`┌${'─'.repeat(98)}┐`);
+  console.log(`│ Provider  │ Total Trades │ Unique TX │ Unique Wallets │ DEXs │ Query Time   │`);
+  console.log(`├${'─'.repeat(98)}┤`);
+  console.log(`│ Mobula    │ ${String(result.results.mobula.totalTrades).padEnd(12)} │ ${String(mobulaUniqueTx).padEnd(9)} │ ${String(result.results.mobula.uniqueWallets).padEnd(14)} │ ${String(result.results.mobula.dexList.length).padEnd(4)} │ ${String(result.results.mobula.queryTime + 'ms').padEnd(12)} │`);
+  console.log(`│ Moralis   │ ${String(result.results.moralis.totalTrades).padEnd(12)} │ ${String(moralisUniqueTx).padEnd(9)} │ ${String(result.results.moralis.uniqueWallets).padEnd(14)} │ ${String(result.results.moralis.dexList.length).padEnd(4)} │ ${String(result.results.moralis.queryTime + 'ms').padEnd(12)} │`);
+  console.log(`│ Bitquery  │ ${String(result.results.bitquery.totalTrades).padEnd(12)} │ ${String(bitqueryUniqueTx).padEnd(9)} │ ${String(result.results.bitquery.uniqueWallets).padEnd(14)} │ ${String(result.results.bitquery.dexList.length).padEnd(4)} │ ${String(result.results.bitquery.queryTime + 'ms').padEnd(12)} │`);
+  console.log(`│ Codex     │ ${String(result.results.codex.totalTrades).padEnd(12)} │ ${String(codexUniqueTx).padEnd(9)} │ ${String(result.results.codex.uniqueWallets).padEnd(14)} │ ${String(result.results.codex.dexList.length).padEnd(4)} │ ${String(result.results.codex.queryTime + 'ms').padEnd(12)} │`);
+  console.log(`└${'─'.repeat(98)}┘\n`);
 
-  console.log('DELTA ANALYSIS (vs Mobula):');
+  console.log('DELTA ANALYSIS (Unique Transactions vs Mobula):');
 
-  const moralisDelta = result.results.mobula.totalTrades - result.results.moralis.totalTrades;
-  const moralisPercentage = result.results.mobula.totalTrades > 0
-    ? ((moralisDelta / result.results.mobula.totalTrades) * 100).toFixed(1)
+  const moralisTxDelta = mobulaUniqueTx - moralisUniqueTx;
+  const moralisTxPercentage = mobulaUniqueTx > 0
+    ? ((moralisTxDelta / mobulaUniqueTx) * 100).toFixed(1)
     : '0.0';
-  console.log(`  Moralis missing: ${moralisDelta} trades (${moralisPercentage}% of total)`);
+  console.log(`  Moralis missing: ${moralisTxDelta} transactions (${moralisTxPercentage}%)`);
 
-  const bitqueryDelta = result.results.mobula.totalTrades - result.results.bitquery.totalTrades;
-  const bitqueryPercentage = result.results.mobula.totalTrades > 0
-    ? ((bitqueryDelta / result.results.mobula.totalTrades) * 100).toFixed(1)
+  const bitqueryTxDelta = mobulaUniqueTx - bitqueryUniqueTx;
+  const bitqueryTxPercentage = mobulaUniqueTx > 0
+    ? ((bitqueryTxDelta / mobulaUniqueTx) * 100).toFixed(1)
     : '0.0';
-  console.log(`  Bitquery missing: ${bitqueryDelta} trades (${bitqueryPercentage}% of total)`);
+  console.log(`  Bitquery missing: ${bitqueryTxDelta} transactions (${bitqueryTxPercentage}%)`);
 
-  const codexDelta = result.results.mobula.totalTrades - result.results.codex.totalTrades;
-  const codexPercentage = result.results.mobula.totalTrades > 0
-    ? ((codexDelta / result.results.mobula.totalTrades) * 100).toFixed(1)
+  const codexTxDelta = mobulaUniqueTx - codexUniqueTx;
+  const codexTxPercentage = mobulaUniqueTx > 0
+    ? ((codexTxDelta / mobulaUniqueTx) * 100).toFixed(1)
     : '0.0';
-  console.log(`  Codex missing: ${codexDelta} trades (${codexPercentage}% of total)\n`);
+  console.log(`  Codex missing: ${codexTxDelta} transactions (${codexTxPercentage}%)\n`);
+
+  console.log('NOTE: Providers may count multi-hop swaps differently:');
+  console.log(`  - Mobula trade/tx ratio: ${(result.results.mobula.totalTrades / mobulaUniqueTx).toFixed(2)}`);
+  console.log(`  - Moralis trade/tx ratio: ${moralisUniqueTx > 0 ? (result.results.moralis.totalTrades / moralisUniqueTx).toFixed(2) : 'N/A'}`);
+  console.log(`  - Bitquery trade/tx ratio: ${bitqueryUniqueTx > 0 ? (result.results.bitquery.totalTrades / bitqueryUniqueTx).toFixed(2) : 'N/A'}`);
+  console.log(`  - Codex trade/tx ratio: ${codexUniqueTx > 0 ? (result.results.codex.totalTrades / codexUniqueTx).toFixed(2) : 'N/A'}\n`);
 
   console.log('PLATFORM COVERAGE (Front-ends/Wallets):');
   console.log(`  Mobula: ${result.results.mobula.platformList?.join(', ') || 'N/A'}`);

@@ -23,22 +23,45 @@ export class CodexProvider {
       const fromTimestamp = Math.floor(startTimestamp / 1000);
       const toTimestamp = Math.floor(endTimestamp / 1000);
 
-      console.log(`[Codex] Fetching trades for time window: ${new Date(startTimestamp).toISOString()} -> ${new Date(endTimestamp).toISOString()}`);
+      console.log(`[Codex ${token.chain}] Fetching trades for time window: ${new Date(startTimestamp).toISOString()} -> ${new Date(endTimestamp).toISOString()}`);
+
+      // Map chain names to Codex networkIds
+      const networkIdMap: Record<string, number> = {
+        'solana': 1399811149,
+        'ethereum': 1,
+        'bsc': 56,
+        'base': 8453
+      };
+
+      const networkId = networkIdMap[token.chain];
+      if (!networkId) {
+        errors.push(`Codex: Unsupported chain ${token.chain}`);
+        console.error(`[Codex] Unsupported chain: ${token.chain}`);
+        return {
+          provider: 'codex',
+          totalTrades: 0,
+          uniqueWallets: 0,
+          dexList: [],
+          trades: [],
+          queryTime: Date.now() - startTime,
+          errors
+        };
+      }
 
       let cursor: string | null = null;
       let hasMore = true;
       let pageCount = 0;
-      const maxPages = 150; // Prevent infinite loops
+      const maxPages = 2000; // Prevent infinite loops
 
       while (hasMore && pageCount < maxPages) {
         pageCount++;
-        console.log(`[Codex] Fetching page ${pageCount}${cursor ? ' with cursor' : ' (first page)'}...`);
+        console.log(`[Codex ${token.chain}] Fetching page ${pageCount}${cursor ? ' with cursor' : ' (first page)'}...`);
         const query = `
           query {
             getTokenEvents(
               query: {
                 address: "${token.address}"
-                networkId: 1399811149
+                networkId: ${networkId}
                 eventType: Swap
                 timestamp: { from: ${fromTimestamp}, to: ${toTimestamp} }
                 symbolType: TOKEN

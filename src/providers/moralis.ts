@@ -3,10 +3,26 @@ import { Trade, ProviderResult, TokenConfig } from '../types';
 
 export class MoralisProvider {
   private apiKey: string;
-  private baseUrl = 'https://solana-gateway.moralis.io';
 
   constructor(apiKey: string) {
     this.apiKey = apiKey;
+  }
+
+  private getBaseUrl(chain: string): string {
+    if (chain === 'solana') {
+      return 'https://solana-gateway.moralis.io';
+    }
+    // EVM chains use the unified endpoint
+    return 'https://deep-index.moralis.io/api/v2.2';
+  }
+
+  private getChainParam(chain: string): string | undefined {
+    const chainMap: Record<string, string> = {
+      'ethereum': '0x1',
+      'bsc': '0x38',
+      'base': '0x2105'
+    };
+    return chainMap[chain];
   }
 
   async fetchTrades(
@@ -22,31 +38,46 @@ export class MoralisProvider {
       let cursor: string | undefined;
       let hasMore = true;
 
-      console.log(`[Moralis] Fetching trades for time window: ${new Date(startTimestamp).toISOString()} -> ${new Date(endTimestamp).toISOString()}`);
+      console.log(`[Moralis ${token.chain}] Fetching trades for time window: ${new Date(startTimestamp).toISOString()} -> ${new Date(endTimestamp).toISOString()}`);
+
+      let pageCount = 0;
+      const baseUrl = this.getBaseUrl(token.chain);
+      const isSolana = token.chain === 'solana';
 
       while (hasMore) {
+        pageCount++;
         const params: any = {
           limit: 100,
           fromDate: new Date(startTimestamp).toISOString().split('.')[0],
           toDate: new Date(endTimestamp).toISOString().split('.')[0],
-          order: 'ASC',
-          transactionTypes: 'buy,sell'
+          order: 'ASC'
         };
+
+        if (isSolana) {
+          params.transactionTypes = 'buy,sell';
+        }
+
+        // Add chain param for EVM
+        const chainParam = this.getChainParam(token.chain);
+        if (chainParam) {
+          params.chain = chainParam;
+        }
 
         if (cursor) {
           params.cursor = cursor;
         }
 
-        const response = await axios.get(
-          `${this.baseUrl}/token/mainnet/${token.address}/swaps`,
-          {
-            params,
-            headers: {
-              'X-API-Key': this.apiKey,
-              'accept': 'application/json'
-            }
+        const endpoint = isSolana
+          ? `${baseUrl}/token/mainnet/${token.address}/swaps`
+          : `${baseUrl}/erc20/${token.address}/swaps`;
+
+        const response = await axios.get(endpoint, {
+          params,
+          headers: {
+            'X-API-Key': this.apiKey,
+            'accept': 'application/json'
           }
-        );
+        });
 
         const data = response.data;
 
@@ -69,10 +100,13 @@ export class MoralisProvider {
 
           hasMore = !!data.cursor;
           cursor = data.cursor;
+          console.log(`[Moralis] Page ${pageCount}: ${filteredTrades.length} trades. Total: ${trades.length}. ${hasMore ? 'More pages' : 'Done'}`);
         } else {
           hasMore = false;
         }
       }
+
+      console.log(`[Moralis] Completed: ${pageCount} pages, ${trades.length} total trades`);
     } catch (error: any) {
       errors.push(`Moralis API error: ${error.message}`);
       console.error('Moralis fetch error:', error.response?.data || error.message);
