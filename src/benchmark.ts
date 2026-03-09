@@ -13,52 +13,52 @@ const TOKENS: TokenConfig[] = [
   {
     address: 'BWJ7zJauzatao4FsBnGdVsqdBi3k5NbgSY62noZApump',
     name: 'Nana',
-    launchTimestamp: Date.now() - 3600000, // 1 hour ago
+    launchTimestamp: 1772982197000, // Fixed: 2026-03-08T15:03:17Z (known active period)
     chain: 'solana'
   },
   {
     address: 'GJqCjtgEwqdFWVRsDs8JXKFoTeRVZeHs1RL4ccvrpump',
     name: 'Oilinu',
-    launchTimestamp: Date.now() - 3600000,
+    launchTimestamp: 1772982197000,
     chain: 'solana'
   },
   // Ethereum
   {
     address: '0x279B46A5BCB1D1de37F5588e46c756B15b26A896',
     name: 'OIL',
-    launchTimestamp: Date.now() - 3600000,
+    launchTimestamp: Date.now() - 600000, // 10 min ago (recent activity)
     chain: 'ethereum'
   },
   {
     address: '0x2b566950BA2298AcEf3c730CC0129b2f4fBd30a3',
     name: 'Kimchi',
-    launchTimestamp: Date.now() - 3600000,
+    launchTimestamp: Date.now() - 600000,
     chain: 'ethereum'
   },
   // BSC
   {
     address: '0xc20E45E49e0E79f0fC81E71F05fD2772d6587777',
     name: 'MILADY',
-    launchTimestamp: Date.now() - 3600000,
+    launchTimestamp: Date.now() - 600000,
     chain: 'bsc'
   },
   {
     address: '0xCae117ca6Bc8A341D2E7207F30E180f0e5618B9D',
     name: 'ARK',
-    launchTimestamp: Date.now() - 3600000,
+    launchTimestamp: Date.now() - 600000,
     chain: 'bsc'
   },
   // Base
   {
     address: '0x64384EBd580f8c48ED4972bbbE895aDE55671Aca',
     name: 'Broke',
-    launchTimestamp: Date.now() - 3600000,
+    launchTimestamp: Date.now() - 600000,
     chain: 'base'
   },
   {
     address: '0x9aA448c1Da3B8975e0619A5a96db4Fccc491e4d5',
     name: 'LANCER',
-    launchTimestamp: Date.now() - 3600000,
+    launchTimestamp: Date.now() - 600000,
     chain: 'base'
   }
 ];
@@ -85,7 +85,7 @@ async function runBenchmark(token: TokenConfig): Promise<BenchmarkResult> {
   console.log(`${'='.repeat(60)}\n`);
 
   const startTimestamp = token.launchTimestamp;
-  const endTimestamp = token.launchTimestamp + 3600000; // +1 hour
+  const endTimestamp = token.launchTimestamp + 600000; // +10 minutes
 
   // Initialize providers
   const mobula = new MobulaProvider(process.env.MOBULA_API_KEY!);
@@ -115,7 +115,7 @@ async function runBenchmark(token: TokenConfig): Promise<BenchmarkResult> {
     timeWindow: {
       start: startTimestamp,
       end: endTimestamp,
-      durationMinutes: 60
+      durationMinutes: 10
     },
     results: {
       mobula: mobulaResult,
